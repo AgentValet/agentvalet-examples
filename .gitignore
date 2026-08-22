@@ -1,0 +1,12 @@
+node_modules/
+dist/
+__pycache__/
+.venv/
+*.egg-info/
+.pytest_cache/
+.env
+.env.agentvalet
+
+# Never commit an agent identity. `npx @agentvalet/register` writes these.
+*.key
+.agentvalet/
