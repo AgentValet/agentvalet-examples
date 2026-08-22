@@ -10,3 +10,8 @@ __pycache__/
 # Never commit an agent identity. `npx @agentvalet/register` writes these.
 *.key
 .agentvalet/
+
+# No lockfiles. CI installs the way a stranger does, so registry drift that
+# would break a reader shows up as a red build rather than staying hidden
+# behind a pin nobody regenerates.
+package-lock.json
