@@ -90,11 +90,12 @@ Per-subagent identity is real here, and these bound it:
   distinct identity.
 - **Approval replay does not re-check mid-approval scope narrowing.** If a scope
   is narrowed while an action sits queued, the replay won't notice.
-- **`evaluate()` is broken on bearer-mode clients** in `agentvalet` 0.2.0:
-  `from_bearer` sets no `agent_id`, so the AuthZEN body carries an empty
-  `subject.id` and the proxy returns 400 — despite the docstring saying it
-  behaves identically. Use a real call to test a child's limits, as the smoke
-  tests here do. It's the stronger proof anyway.
+- **`evaluate()` on a child needs `agentvalet` >= 0.2.1.** In 0.2.0 it returned
+  400, then 401: `from_bearer` set no `agent_id`, so the AuthZEN body carried an
+  empty `subject.id`, and the proxy also routed child bearers down a path they
+  could not satisfy. Both are fixed. The smoke tests here still use a **real
+  call** rather than `evaluate()` — that exercises the path a crew member
+  actually takes, which is the stronger proof.
 
 ## What the tests pin
 
