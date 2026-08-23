@@ -1,0 +1,64 @@
+# Proves every example still works for a stranger who clones this repo today.
+#
+# Deliberately installs from the PUBLIC registries with no lockfile: the thing
+# under test is "does a fresh install work right now", so registry drift that
+# would break a reader shows up as a red build rather than hiding behind a pin
+# nobody regenerates.
+#
+# Beat 3 (approval) is NOT covered here — it needs a human by construction.
+# Its correctness lives in the proxy's own test suite; what these jobs assert is
+# that the other beats work end to end against the live proxy.
+#
+# The CI agent is granted exactly `github:repo.read` and nothing else. That is
+# load-bearing, not tidiness: the deny beat asserts `stripe:charge` comes back
+# `scope_not_granted`, so any extra grant risks making that test pass for the
+# wrong reason.
+name: smoke
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # 03:00 UTC daily — catches registry drift on packages we do not control.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AGENT_ID: ${{ secrets.AGENT_ID }}
+  OWNER_ID: ${{ secrets.OWNER_ID }}
+  # The SDKs read this directly, so no key file is ever written on the runner.
+  AGENT_PRIVATE_KEY_B64: ${{ secrets.AGENT_PRIVATE_KEY_B64 }}
+
+jobs:
+  node-sdk:
+    name: node-sdk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Install from the public registry
+        working-directory: node-sdk
+        run: npm install --no-package-lock
+      - name: Smoke
+        working-directory: node-sdk
+        run: npm run smoke
+
+  python-langgraph:
+    name: python-langgraph
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install from PyPI
+        working-directory: python-langgraph
+        run: pip install -e ".[dev]"
+      - name: Smoke
+        working-directory: python-langgraph
+        run: pytest -q
