@@ -15,3 +15,6 @@ __pycache__/
 # would break a reader shows up as a red build rather than staying hidden
 # behind a pin nobody regenerates.
 package-lock.json
+
+# Python virtualenvs
+.venv/

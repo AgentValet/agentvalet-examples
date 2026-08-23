@@ -1,0 +1,15 @@
+[project]
+name = "agentvalet-example-langgraph"
+version = "0.1.0"
+description = "Governed platform access from inside a LangGraph node."
+requires-python = ">=3.10"
+dependencies = [
+  "agentvalet>=0.2.0",
+  "langgraph>=0.2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools]
+py-modules = ["demo"]
