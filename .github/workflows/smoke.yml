@@ -79,3 +79,19 @@ jobs:
       - name: Smoke
         working-directory: crewai
         run: pytest -q
+
+  claude-code:
+    name: claude-code
+    runs-on: ubuntu-latest
+    # This example ships config, not code, so the beats cannot be asserted -
+    # they happen in conversation. What IS checkable is the config: malformed
+    # JSON, an invocation drifted from what the CLI generates, or a real agent
+    # identity committed by accident. Needs no credentials.
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Validate config
+        working-directory: claude-code
+        run: node validate.mjs

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "agentvalet": {
+      "command": "npx",
+      "args": ["-y", "@agentvalet/register@latest", "mcp-server"],
+      "env": {
+        "AGENT_ID": "REPLACE_WITH_YOUR_AGENT_ID",
+        "OWNER_ID": "REPLACE_WITH_YOUR_OWNER_ID",
+        "PROXY_URL": "https://api.agentvalet.ai",
+        "AGENT_PRIVATE_KEY_PATH": "REPLACE_WITH_THE_PATH_TO_YOUR_agent.key"
+      }
+    }
+  }
+}
