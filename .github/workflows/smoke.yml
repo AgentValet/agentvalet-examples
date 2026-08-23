@@ -62,3 +62,20 @@ jobs:
       - name: Smoke
         working-directory: python-langgraph
         run: pytest -q
+
+  crewai:
+    name: crewai
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          # CrewAI caps at <3.14 on every release, so 3.14 cannot resolve
+          # crewai>=1.0 at all. Pin below the ceiling deliberately.
+          python-version: "3.13"
+      - name: Install from PyPI
+        working-directory: crewai
+        run: pip install -e ".[dev]"
+      - name: Smoke
+        working-directory: crewai
+        run: pytest -q
