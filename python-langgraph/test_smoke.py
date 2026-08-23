@@ -7,7 +7,7 @@ live proxy, so a broken example is caught before a reader hits it.
 
 from agentvalet import AgentValet
 
-from demo import read_beat, deny_beat
+from demo import approval_gated_scopes, deny_beat, read_beat
 
 
 def test_beat_2_granted_read_returns_the_broker_envelope():
@@ -27,3 +27,18 @@ def test_beat_4_ungranted_scope_is_denied_without_being_attempted():
 
     assert decision["decision"] is False, "an ungranted scope must not be allowed"
     assert decision["reason"] == "scope_not_granted"
+
+
+def test_the_approval_gate_lookup_actually_reads_the_platform_listing():
+    """Regression: list_platforms() resolves to the broker envelope.
+
+    Reading listed["platforms"] instead of listed["data"]["platforms"] yields
+    nothing, which silently looks like "nothing is gated" and makes beat 3 a
+    permanent no-op. None means "platform not granted", which is a real answer;
+    what this pins is that the lookup works at all.
+    """
+    av = AgentValet.from_env()
+    gated = approval_gated_scopes(av, "github")
+
+    assert gated is not None, "github should be granted to the CI agent"
+    assert isinstance(gated, list), "a granted platform yields a scope list"

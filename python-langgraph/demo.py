@@ -34,22 +34,43 @@ def deny_beat(av: AgentValet) -> Any:
     return av.evaluate("stripe", "charge")
 
 
-def _is_approval_gated(av: AgentValet, platform: str, scope: str) -> bool:
-    """True when the owner has marked this scope as needing approval."""
+def approval_gated_scopes(av: AgentValet, platform: str) -> list[str] | None:
+    """The scopes on ``platform`` that require the owner's approval.
+
+    Returns None when the platform is not granted to this agent at all - a
+    different situation from "granted but nothing is gated". Collapsing the two
+    is exactly how a silent no-op hides. Raises if the listing cannot be read.
+    """
     listed = av.list_platforms()
-    for entry in listed.get("platforms", []):
+    # list_platforms() resolves to the broker envelope, so the listing lives
+    # under "data" like every other call. Reading listed["platforms"] yields
+    # nothing, which silently looks like "nothing is gated".
+    entries = (listed.get("data") or {}).get("platforms")
+    if entries is None:
+        entries = listed.get("platforms")
+    if entries is None:
+        raise RuntimeError("Could not read the platform listing from list_platforms()")
+
+    for entry in entries:
         if entry.get("platformId") == platform:
-            return bool(entry.get("requireApproval")) or scope in (
-                entry.get("approvalScopes") or []
-            )
-    return False
+            if entry.get("requireApproval"):
+                return ["*"]
+            return list(entry.get("approvalScopes") or [])
+    return None
 
 
 def approval_beat(av: AgentValet) -> None:
     """Beat 3 — blocks until the owner decides, or the budget expires."""
     scope = "github:repo.create"
+    gated = approval_gated_scopes(av, "github")
 
-    if not _is_approval_gated(av, "github", scope):
+    if gated is None:
+        print()
+        print("Beat 3 - SKIPPED. This agent has no GitHub grant at all,")
+        print("so there is nothing to approve. Grant it GitHub first.")
+        return
+
+    if not ("*" in gated or scope in gated):
         # Say so rather than silently succeeding: a reader expecting a prompt
         # would otherwise conclude the feature is broken.
         print(f"\nBeat 3 - SKIPPED. '{scope}' is granted without approval,")

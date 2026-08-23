@@ -31,21 +31,47 @@ export async function runDenyBeat(av: AgentValet): Promise<unknown> {
   return av.evaluate("stripe", "charge");
 }
 
-/** True when the owner has marked this scope as needing approval. */
-async function isApprovalGated(av: AgentValet, platform: string, scope: string): Promise<boolean> {
+/**
+ * The scopes on `platform` that require the owner's approval.
+ *
+ * Returns null when the platform is not granted to this agent at all — that is
+ * a different situation from "granted but nothing is gated", and collapsing the
+ * two is exactly how a silent no-op hides. Throws if the listing cannot be read.
+ */
+export async function approvalGatedScopes(
+  av: AgentValet,
+  platform: string,
+): Promise<string[] | null> {
+  type Entry = { platformId: string; requireApproval?: boolean; approvalScopes?: string[] };
   const res = (await av.listPlatforms()) as {
-    platforms?: Array<{ platformId: string; requireApproval?: boolean; approvalScopes?: string[] }>;
+    data?: { platforms?: Entry[] };
+    platforms?: Entry[];
   };
-  const p = res.platforms?.find((x) => x.platformId === platform);
-  return !!p && (p.requireApproval === true || (p.approvalScopes ?? []).includes(scope));
+
+  // listPlatforms() resolves to the broker envelope — the listing is under
+  // `data`, exactly like every other call. Reading `res.platforms` yields
+  // undefined, which silently looks like "nothing is gated".
+  const list = res.data?.platforms ?? res.platforms;
+  if (!list) throw new Error("Could not read the platform listing from listPlatforms()");
+
+  const entry = list.find((x) => x.platformId === platform);
+  if (!entry) return null;
+  return entry.requireApproval === true ? ["*"] : entry.approvalScopes ?? [];
 }
 
 /** Beat 3 — the approval moment. Blocks until the owner decides, or ~50s. */
 export async function runApprovalBeat(av: AgentValet): Promise<void> {
   const scope = "github:repo.create";
-  const gated = await isApprovalGated(av, "github", scope);
+  const gatedScopes = await approvalGatedScopes(av, "github");
 
-  if (!gated) {
+  if (gatedScopes === null) {
+    console.log();
+    console.log("Beat 3 - SKIPPED. This agent has no GitHub grant at all,");
+    console.log("so there is nothing to approve. Grant it GitHub first.");
+    return;
+  }
+
+  if (!(gatedScopes.includes("*") || gatedScopes.includes(scope))) {
     // Worth saying out loud rather than silently succeeding: a reader who
     // expected a prompt would otherwise assume the feature is broken.
     console.log(`\nBeat 3 — SKIPPED. '${scope}' is granted without approval,`);
