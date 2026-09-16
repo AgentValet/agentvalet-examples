@@ -1,0 +1,17 @@
+{
+  "name": "agentvalet-lab-01-governed-loop",
+  "private": true,
+  "type": "module",
+  "description": "Register an agent, watch a governed call held for your approval, verify the signed receipt, revoke the agent and see the next call refuse.",
+  "scripts": {
+    "read": "node 01-read.mjs",
+    "write": "node 02-write.mjs",
+    "deny": "node 03-deny.mjs",
+    "receipt": "node 04-receipt.mjs",
+    "smoke": "node --test smoke.test.mjs"
+  },
+  "dependencies": {
+    "@agentvalet/client": "0.2.0",
+    "jose": "^5.10.0"
+  }
+}

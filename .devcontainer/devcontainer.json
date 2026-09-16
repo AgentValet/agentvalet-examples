@@ -1,0 +1,18 @@
+{
+  "name": "AgentValet labs",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" }
+  },
+  "postCreateCommand": "npm i -g @agentvalet/register@1.6.0 && (cd labs/01-governed-loop && npm install --no-package-lock)",
+  "containerEnv": {
+    "MCP_TIMEOUT": "60000",
+    "MCP_TOOL_TIMEOUT": "120000"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["anthropic.claude-code"]
+    }
+  },
+  "hostRequirements": { "cpus": 2 }
+}
