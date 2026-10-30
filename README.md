@@ -22,6 +22,12 @@ should be looking at your own audit log inside ten minutes.
 Every example tells the same four-beat story, so you can switch surfaces and
 still recognise where you are.
 
+## Drills
+
+| Drill | What it measures |
+|---|---|
+| [`kill-switch-drill/`](./kill-switch-drill) | How long an agent's access keeps working after you revoke it. Works with any identity stack, needs only bash or PowerShell, and doesn't need AgentValet. |
+
 ## What happens, in four beats
 
 **1 — Register.** `npx @agentvalet/register` generates an RSA keypair *on your

@@ -1,0 +1,10 @@
+{
+  "name": "kill-switch-drill-agentvalet",
+  "private": true,
+  "type": "module",
+  "description": "Check commands for timing an AgentValet revoke with the kill-switch drill.",
+  "license": "MIT",
+  "dependencies": {
+    "@agentvalet/client": "0.3.0"
+  }
+}
