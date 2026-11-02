@@ -2,7 +2,7 @@
 
 Open Jaeger at <http://localhost:16686>.
 
-1. **Service:** `agentgateway`. **Operation:** `call_tool`.
+1. **Service:** `agentgateway`. **Operation:** `tools/call <target>_<tool>`, for example `tools/call everything_echo` (agentgateway v1.7.0; older docs call it `call_tool`). The bare `tools/call` operation is the request span above it.
 2. **Tags:** `gen_ai.tool.name=echo` to narrow to one tool, or `jwt.sub=alice@example.com` to narrow to one token subject. Set the time range.
 3. Open the trace. The gateway span carries:
    - `jwt.sub`: the token's subject. With a delegated token that is the user; see the README for where the agent is.

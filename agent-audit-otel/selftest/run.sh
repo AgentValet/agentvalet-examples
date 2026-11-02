@@ -101,8 +101,8 @@ names=$(echo "$trace" | node -e '
   });')
 echo "  info    Jaeger $names"
 echo "$names" | grep -q 'services=agentgateway' || fail "trace service is not agentgateway ($names)"
-echo "$names" | grep -q 'call_tool' || fail "no call_tool operation in the trace ($names)"
-echo "  ok      Jaeger: service agentgateway, operation call_tool"
+echo "$names" | grep -q 'tools/call everything_echo' || fail "no 'tools/call everything_echo' operation in the trace ($names)"
+echo "  ok      Jaeger: service agentgateway, operation tools/call everything_echo"
 
 # The agent's side of the system cannot rewrite the record.
 if docker compose exec -T audit-reader sh -c 'echo x >> /audit/access-log.jsonl' 2>/dev/null; then
