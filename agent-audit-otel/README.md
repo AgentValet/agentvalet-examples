@@ -32,7 +32,7 @@ The self-test brings up the lab, makes real tool calls as two agents, and checks
 selftest passed
 ```
 
-It runs in CI on every change and weekly, so the configs here match the pinned versions.
+It passed on GitHub's hosted Ubuntu runner on 3 Nov 2026, against the versions pinned in `verified-against.md`.
 
 ## Explore it yourself
 

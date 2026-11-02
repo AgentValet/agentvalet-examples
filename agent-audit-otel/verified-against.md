@@ -1,6 +1,6 @@
 # Verified against
 
-Guide sources checked 27 Oct 2026. Kit built and its open-source route self-tested 3 Nov 2026. The self-test runs in CI on every change and weekly.
+Guide sources checked 27 Oct 2026. Kit built and its open-source route self-tested on GitHub's hosted Ubuntu runner, 3 Nov 2026.
 
 | Item | Version or page date | Source | How checked |
 | --- | --- | --- | --- |
