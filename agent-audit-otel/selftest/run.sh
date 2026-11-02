@@ -91,10 +91,18 @@ for attr in jwt.sub gen_ai.tool.name mcp.session.id; do
 done
 echo "  ok      Jaeger: trace $trace_id carries jwt.sub, gen_ai.tool.name and mcp.session.id"
 
-# queries/jaeger.md tells people to search service agentgateway, operation call_tool.
-curl -sf "$JAEGER/api/services" | grep -q '"agentgateway"'   || fail "Jaeger has no agentgateway service: $(curl -sf "$JAEGER/api/services")"
-curl -sf "$JAEGER/api/services/agentgateway/operations" | grep -q '"call_tool'   || fail "no call_tool operation: $(curl -sf "$JAEGER/api/services/agentgateway/operations")"
-echo "  ok      Jaeger: service agentgateway has the call_tool operation"
+# queries/jaeger.md tells people which service and operation to search.
+names=$(echo "$trace" | node -e '
+  let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+    const t = JSON.parse(s).data[0];
+    const svc = [...new Set(Object.values(t.processes).map((p) => p.serviceName))];
+    const ops = [...new Set(t.spans.map((x) => x.operationName))];
+    console.log("services=" + svc.join(",") + " operations=" + ops.join(","));
+  });')
+echo "  info    Jaeger $names"
+echo "$names" | grep -q 'services=agentgateway' || fail "trace service is not agentgateway ($names)"
+echo "$names" | grep -q 'call_tool' || fail "no call_tool operation in the trace ($names)"
+echo "  ok      Jaeger: service agentgateway, operation call_tool"
 
 # The agent's side of the system cannot rewrite the record.
 if docker compose exec -T audit-reader sh -c 'echo x >> /audit/access-log.jsonl' 2>/dev/null; then
