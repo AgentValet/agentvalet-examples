@@ -1,0 +1,57 @@
+// Microsoft Entra Agent ID: answer the five-minute question in Log Analytics.
+//
+// STATUS: written from Microsoft's documentation (pages in ../verified-against.md).
+// These queries have NOT yet been run against a live tenant. The kit's self-test
+// covers the open-source route only. Check each against your own workspace
+// before you rely on it, and tell us what you find:
+// https://github.com/AgentValet/agentvalet-examples/issues
+//
+// Before you start, in Entra diagnostic settings send AuditLogs,
+// ServicePrincipalSignInLogs, NonInteractiveUserSignInLogs and
+// MicrosoftGraphActivityLogs to ONE workspace. Creating the setting needs the
+// Security Administrator role; Graph activity logs need Entra ID P1 or P2.
+// Graph activity logs arrive late: most within 30 minutes, some up to 2 hours.
+
+
+// 1. Agent sign-ins (app-only). The Agent column is "Details of agentic sign-in";
+//    Microsoft does not document its structure, so look at a few rows first.
+AADServicePrincipalSignInLogs
+| where TimeGenerated > ago(1d)
+| where isnotempty(Agent)
+| project TimeGenerated, ServicePrincipalName, ServicePrincipalId,
+          ResourceDisplayName, ResultType, ConditionalAccessStatus,
+          CorrelationId, UniqueTokenIdentifier, Agent
+
+
+// 2. What each agent token did: Microsoft documents this join as
+//    SignInActivityId == UniqueTokenIdentifier. One row per Graph request, with
+//    the agent, scopes or roles, request URI and status code.
+MicrosoftGraphActivityLogs
+| where TimeGenerated > ago(1d)
+| join kind=inner (AADServicePrincipalSignInLogs | where isnotempty(Agent))
+    on $left.SignInActivityId == $right.UniqueTokenIdentifier
+| project TimeGenerated, ServicePrincipalName, AppId, UserId,
+          RequestMethod, RequestUri, ResponseStatusCode, Roles, Scopes
+
+
+// 3. The same join for an agent acting for a user. In that flow the token
+//    represents the user while also identifying the calling agent. Microsoft
+//    does not say which column carries the agent here, so inspect a row.
+MicrosoftGraphActivityLogs
+| where TimeGenerated > ago(1d)
+| join kind=inner (AADNonInteractiveUserSignInLogs)
+    on $left.SignInActivityId == $right.UniqueTokenIdentifier
+| project TimeGenerated, UserPrincipalName, AppDisplayName, AppId,
+          RequestMethod, RequestUri, ResponseStatusCode, Scopes
+
+
+// 4. Lifecycle changes involving agents. The Agent ID logs page says to check
+//    agentType on initiatedBy and targetResources (anything but "notAgentic" means
+//    an agent was involved); the Agent ID FAQ says audit logs don't distinguish
+//    agents by default. This query looks for the property anywhere in either
+//    column, so it returns rows only where your tenant populates it.
+AuditLogs
+| where TimeGenerated > ago(7d)
+| where tostring(InitiatedBy) has "agentType" or tostring(TargetResources) has "agentType"
+| where not(tostring(InitiatedBy) has "notAgentic" and tostring(TargetResources) has "notAgentic")
+| project TimeGenerated, OperationName, Result, InitiatedBy, TargetResources, CorrelationId

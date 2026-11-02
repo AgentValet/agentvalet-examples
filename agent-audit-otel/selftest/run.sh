@@ -91,6 +91,11 @@ for attr in jwt.sub gen_ai.tool.name mcp.session.id; do
 done
 echo "  ok      Jaeger: trace $trace_id carries jwt.sub, gen_ai.tool.name and mcp.session.id"
 
+# queries/jaeger.md tells people to search service agentgateway, operation call_tool.
+curl -sf "$JAEGER/api/services" | grep -q '"agentgateway"'   || fail "Jaeger has no agentgateway service: $(curl -sf "$JAEGER/api/services")"
+curl -sf "$JAEGER/api/services/agentgateway/operations" | grep -q '"call_tool'   || fail "no call_tool operation: $(curl -sf "$JAEGER/api/services/agentgateway/operations")"
+echo "  ok      Jaeger: service agentgateway has the call_tool operation"
+
 # The agent's side of the system cannot rewrite the record.
 if docker compose exec -T audit-reader sh -c 'echo x >> /audit/access-log.jsonl' 2>/dev/null; then
   fail "the audit volume is writable from outside the collector"
