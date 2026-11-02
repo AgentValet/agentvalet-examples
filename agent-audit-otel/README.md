@@ -25,6 +25,7 @@ The self-test brings up the lab, makes real tool calls as two agents, and checks
   ok      report-bot refused by agent-tools-v1
   ok      access log: six fields on every call, the refusal logged as denied, and a trace ID
   ok      Jaeger: trace … carries jwt.sub, gen_ai.tool.name and mcp.session.id
+  info    Jaeger services=agentgateway operations=tools/call,tools/call everything_echo
   ok      Jaeger: service agentgateway, operation tools/call everything_echo
   ok      the audit log is read-only to everything but the collector
 
