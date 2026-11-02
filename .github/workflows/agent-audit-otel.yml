@@ -1,0 +1,42 @@
+# Proves the agent-audit-otel kit still works for someone who clones it today:
+# brings up the gateway, collector and Jaeger, makes real MCP tool calls, and
+# checks every call can be reconstructed from the logs alone.
+name: agent-audit-otel
+
+on:
+  push:
+    paths: ["agent-audit-otel/**", ".github/workflows/agent-audit-otel.yml"]
+  pull_request:
+    paths: ["agent-audit-otel/**", ".github/workflows/agent-audit-otel.yml"]
+  schedule:
+    # Weekly, Monday 05:00 UTC: catches upstream image or schema drift.
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Self-test
+        run: bash agent-audit-otel/selftest/run.sh
+        env:
+          KEEP: "1"
+      - name: Show the lab on failure
+        if: failure()
+        working-directory: agent-audit-otel/oss
+        env:
+          COMPOSE_PROJECT_NAME: agent-audit-otel-selftest
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color --tail 80
+          docker compose exec -T audit-reader head -c 4000 /audit/access-log.jsonl || true
