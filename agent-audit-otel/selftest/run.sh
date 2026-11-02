@@ -95,3 +95,8 @@ fi
 echo "  ok      the audit log is read-only to everything but the collector"
 echo
 echo "selftest passed"
+# DEBUG (temporary): raw attributes of every record
+echo "$log" | node --input-type=module -e '
+import { createInterface } from "node:readline";
+for await (const l of createInterface({ input: process.stdin })) { if (!l.trim()) continue; const b = JSON.parse(l);
+  for (const rl of b.resourceLogs) for (const sl of rl.scopeLogs) for (const r of sl.logRecords) { const { attributes, ...rest } = r; console.log(JSON.stringify(rest)); console.log(JSON.stringify(Object.fromEntries(attributes.map(a => [a.key, a.value])))); } }'
