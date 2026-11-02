@@ -1,0 +1,68 @@
+# The See stage on one machine: an MCP gateway that authenticates every call,
+# an OpenTelemetry collector, Jaeger for traces, and a sample MCP server.
+#
+#   node ../issuer/mint.mjs init      # once: writes ../issuer/keys/jwks.json
+#   docker compose up -d
+#
+# Every image is pinned. Bump them deliberately and rerun ../selftest/run.sh.
+services:
+  # The sample tools the agent calls. Replace with your own MCP servers.
+  mcp-everything:
+    image: node:22.23.4-alpine
+    command: ["npx", "-y", "@modelcontextprotocol/server-everything@2.1.0", "streamableHttp"]
+    environment:
+      PORT: "3001"
+    healthcheck:
+      # Any HTTP answer means the server is up (a bare GET is refused with 4xx).
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/mcp').then(() => process.exit(0), () => process.exit(1))"]
+      interval: 3s
+      retries: 40
+
+  agentgateway:
+    image: ghcr.io/agentgateway/agentgateway:v1.7.0
+    command: ["-f", "/config/agentgateway.yaml"]
+    volumes:
+      - ./agentgateway.yaml:/config/agentgateway.yaml:ro
+      - ../issuer/keys/jwks.json:/config/jwks.json:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      mcp-everything:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+
+  # A fresh volume belongs to root; the collector runs as UID 10001.
+  audit-init:
+    image: alpine:3.22
+    command: ["chown", "10001:10001", "/audit"]
+    volumes:
+      - audit:/audit
+
+  # The only writer of the audit log.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.146.0
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - audit:/audit
+    depends_on:
+      audit-init:
+        condition: service_completed_successfully
+      jaeger:
+        condition: service_started
+
+  jaeger:
+    image: jaegertracing/jaeger:2.22.0
+    ports:
+      - "127.0.0.1:16686:16686"
+
+  # Read-only view of the audit log for you and the self-test. The gateway and
+  # the agent never mount this volume, so neither can rewrite what it recorded.
+  audit-reader:
+    image: alpine:3.22
+    command: ["sleep", "infinity"]
+    volumes:
+      - audit:/audit:ro
+
+volumes:
+  audit:

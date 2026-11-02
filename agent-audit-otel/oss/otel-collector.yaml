@@ -1,0 +1,33 @@
+# OpenTelemetry Collector Contrib 0.146.0.
+# Traces go to Jaeger for the "find the call" step. Access logs go to a file on
+# a volume that only the collector writes, so the agent and the gateway cannot
+# edit what they did. In production, ship them to your SIEM instead and give
+# the agent's credentials no write or delete rights there.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+    timeout: 1s
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  file/audit:
+    path: /audit/access-log.jsonl
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/jaeger]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [file/audit]

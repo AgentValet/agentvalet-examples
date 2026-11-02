@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+#
+# agentgateway v1.7.0. Every MCP tool call is authenticated, traced and written
+# to an access log that carries the six fields of the five-minute question:
+# agent, user, tool (with arguments), decision, approver and result.
+frontendPolicies:
+  tracing:
+    host: otel-collector:4317
+    # Defaults to false. Without it, calls reach the access log but not Jaeger.
+    randomSampling: true
+  accessLog:
+    # One record per tool call. Drop the filter to log every MCP method.
+    filter: 'mcp.methodName == "tools/call"'
+    add:
+      # Agent and user in separate fields. The lab issuer uses the RFC 8693
+      # delegation shape: `act.sub` is the agent when it acts for a person,
+      # otherwise `sub` is the agent and there is no user. Map these to your
+      # identity provider's claims (see README.md).
+      agent: 'has(jwt.act) ? jwt.act.sub : jwt.sub'
+      user: 'has(jwt.act) ? jwt.sub : "none"'
+      token_id: 'jwt.jti'
+      tool_target: 'mcp.tool.target'
+      tool_args: 'mcp.tool.arguments'
+      # The policy in force. Name it and version it, so "which rule allowed
+      # this?" has an answer that survives the policy changing next month.
+      policy: '"agent-tools-v1"'
+      # The approval system stamps the call it approved with this header,
+      # so the approval's own record and this one share a key.
+      approval_id: '"x-approval-id" in request.headers ? request.headers["x-approval-id"] : "none"'
+      tool_result: 'mcp.tool.result'
+      tool_error: 'mcp.tool.error'
+    otlp:
+      host: otel-collector:4317
+
+binds:
+- port: 3000
+  listeners:
+  - routes:
+    - matches:
+      - path:
+          exact: /mcp
+      policies:
+        # No token, no call. An unauthenticated call is anonymous in every log.
+        jwtAuth:
+          mode: strict
+          issuer: http://issuer.lab
+          audiences: [agent-audit-otel]
+          jwks:
+            file: /config/jwks.json
+        # agent-tools-v1: the support bot may echo and add. Nothing else.
+        mcpAuthorization:
+          rules:
+          - allow: 'mcp.tool.name in ["echo", "get-sum"] && (has(jwt.act) ? jwt.act.sub : jwt.sub) == "support-bot"'
+      backends:
+      - mcp:
+          targets:
+          - name: everything
+            mcp:
+              host: http://mcp-everything:3001/mcp
