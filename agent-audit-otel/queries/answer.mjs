@@ -45,7 +45,7 @@ export function records(batch) {
     for (const sl of rl.scopeLogs || [])
       for (const lr of sl.logRecords || []) {
         const a = Object.fromEntries((lr.attributes || []).map((kv) => [kv.key, plain(kv.value)]));
-        out.push({ ...a, traceId: lr.traceId || a["trace.id"], time: lr.timeUnixNano });
+        out.push({ ...a, traceId: lr.traceId || a["trace.id"], time: lr.timeUnixNano || lr.observedTimeUnixNano });
       }
   return out;
 }
@@ -54,14 +54,17 @@ export function records(batch) {
 export function sixFields(r) {
   const err = parsed(r.tool_error);
   const res = parsed(r.tool_result);
+  // agentgateway marks a call its authorization policy refused with
+  // reason "Authorization" and an "authorization denied" error.
+  const denied = r.reason === "Authorization" || /authorization denied/i.test(String(r.error || ""));
   return {
     agent: r.agent,
     user: r.user,
     tool: r["mcp.tool.name"] || r["gen_ai.tool.name"] || r.tool,
     arguments: parsed(r.tool_args),
-    decision: r.policy ? `allowed by ${r.policy}` : undefined,
+    decision: r.policy ? `${denied ? "denied" : "allowed"} by ${r.policy}` : undefined,
     approver: r.approval_id,
-    result: err ?? res,
+    result: err ?? res ?? (denied ? r.error : undefined),
     traceId: r.traceId,
     tokenId: r.token_id,
     when: r.time ? new Date(Number(BigInt(r.time) / 1000000n)).toISOString() : undefined,

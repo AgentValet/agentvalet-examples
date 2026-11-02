@@ -62,6 +62,7 @@ trace_id="$(node --input-type=module -e '
   const find = (pred, what) => { const c = calls.find(pred); if (!c) throw new Error("no record for " + what); return c; };
   const d = find((c) => JSON.stringify(c.arguments || "").includes("refund order 1042"), "the delegated call");
   const a = find((c) => c.tool === "get-sum", "the autonomous call");
+  const r = find((c) => c.agent === "report-bot", "the refused call");
   const expect = (cond, msg) => { if (!cond) { console.error("FAIL: " + msg); console.error(JSON.stringify({ d, a }, null, 2)); process.exit(1); } };
   expect(d.agent === "support-bot", "delegated call: agent should be support-bot, got " + d.agent);
   expect(d.user === "alice@example.com", "delegated call: user should be alice@example.com, got " + d.user);
@@ -72,9 +73,11 @@ trace_id="$(node --input-type=module -e '
   expect(/^[0-9a-f]{32}$/.test(d.traceId || ""), "delegated call: no trace ID to join on");
   expect(a.agent === "support-bot" && a.user === "none", "autonomous call: agent/user should be support-bot/none, got " + a.agent + "/" + a.user);
   expect(a.approver === "none", "autonomous call: approver should be none");
+  expect(r.decision === "denied by agent-tools-v1", "refused call: decision should be denied by agent-tools-v1, got " + r.decision);
+  expect(/authorization denied/.test(String(r.result)), "refused call: result should carry the refusal, got " + JSON.stringify(r.result));
   process.stdout.write(d.traceId);
 ' "$answers")" || fail "access log check"
-echo "  ok      access log: all six fields on both calls, plus a trace ID"
+echo "  ok      access log: six fields on every call, the refusal logged as denied, and a trace ID"
 
 # The same call, found in Jaeger by its trace ID.
 trace=""
@@ -95,8 +98,3 @@ fi
 echo "  ok      the audit log is read-only to everything but the collector"
 echo
 echo "selftest passed"
-# DEBUG (temporary): raw attributes of every record
-echo "$log" | node --input-type=module -e '
-import { createInterface } from "node:readline";
-for await (const l of createInterface({ input: process.stdin })) { if (!l.trim()) continue; const b = JSON.parse(l);
-  for (const rl of b.resourceLogs) for (const sl of rl.scopeLogs) for (const r of sl.logRecords) { const { attributes, ...rest } = r; console.log(JSON.stringify(rest)); console.log(JSON.stringify(Object.fromEntries(attributes.map(a => [a.key, a.value])))); } }'
