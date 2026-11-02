@@ -46,7 +46,7 @@ docker compose exec -T audit-reader cat /audit/access-log.jsonl | node ../querie
 ```
 
 ```text
-2026-11-03T00:41:12.300Z  trace 698e4ca7e00985bf5e195fcba2777276
+2026-11-02T23:02:33.641Z  trace 362c145ba5147ee705bfea585389de46
   agent     support-bot
   user      alice@example.com
   tool      echo
